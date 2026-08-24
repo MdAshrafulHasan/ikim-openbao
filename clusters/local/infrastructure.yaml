@@ -14,13 +14,11 @@ spec:
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: pg-cluster
+  name: minio
   namespace: flux-system
 spec:
-  dependsOn:
-    - name: cnpg-operator
   interval: 10m
-  path: ./infrastructure/postgres/cluster
+  path: ./infrastructure/minio
   prune: true
   sourceRef:
     kind: GitRepository
@@ -29,11 +27,14 @@ spec:
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: minio
+  name: pg-cluster
   namespace: flux-system
 spec:
+  dependsOn:
+    - name: cnpg-operator
+    - name: minio
   interval: 10m
-  path: ./infrastructure/minio
+  path: ./infrastructure/postgres/cluster
   prune: true
   sourceRef:
     kind: GitRepository
