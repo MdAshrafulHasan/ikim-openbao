@@ -1,11 +1,26 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: infrastructure
+  name: cnpg-operator
   namespace: flux-system
 spec:
   interval: 10m
-  path: ./infrastructure/postgres
+  path: ./infrastructure/postgres/operator
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: pg-cluster
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: cnpg-operator
+  interval: 10m
+  path: ./infrastructure/postgres/cluster
   prune: true
   sourceRef:
     kind: GitRepository
