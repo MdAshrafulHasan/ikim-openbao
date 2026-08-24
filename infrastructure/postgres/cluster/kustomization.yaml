@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
   - cluster.yaml
   - minio-credentials.yaml
+  - scheduled-backup.yaml
