@@ -39,3 +39,4 @@ spec:
         enabled: false
       service:
         enabled: true
+      affinity: ""
