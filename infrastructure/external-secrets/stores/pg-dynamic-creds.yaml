@@ -1,0 +1,23 @@
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: pg-dynamic-creds
+  namespace: external-secrets
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: openbao-store
+    kind: SecretStore
+  target:
+    name: pg-dynamic-creds
+    creationPolicy: Owner
+  data:
+    - secretKey: username
+      remoteRef:
+        key: creds/readonly
+        property: username
+    - secretKey: password
+      remoteRef:
+        key: creds/readonly
+        property: password
+        

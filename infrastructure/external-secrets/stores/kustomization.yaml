@@ -2,3 +2,4 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - openbao-store.yaml
+  - pg-dynamic-creds.yaml
