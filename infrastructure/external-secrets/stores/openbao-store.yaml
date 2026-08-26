@@ -8,7 +8,6 @@ spec:
     vault:
       server: "http://openbao.openbao.svc.cluster.local:8200"
       path: "database"
-      version: "v2"
       auth:
         tokenSecretRef:
           name: openbao-token
