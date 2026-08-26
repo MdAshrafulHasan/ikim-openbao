@@ -14,10 +14,9 @@ spec:
   data:
     - secretKey: username
       remoteRef:
-        key: creds/readonly
+        key: database/creds/readonly
         property: username
     - secretKey: password
       remoteRef:
-        key: creds/readonly
+        key: database/creds/readonly
         property: password
-        
