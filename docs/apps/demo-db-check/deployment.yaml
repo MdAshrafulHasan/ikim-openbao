@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db-check
+  namespace: demo-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: db-check
+  template:
+    metadata:
+      labels:
+        app: db-check
+    spec:
+      containers:
+        - name: db-check
+          image: postgres:17-alpine
+          command:
+            - /bin/sh
+            - -c
+            - |
+              while true; do
+                echo "$(date) — connecting as $PGUSER";
+                psql "host=pg-cluster-rw.postgres.svc.cluster.local port=5432 dbname=appdb sslmode=disable" -c "SELECT current_user, now();" \
+                  && echo "$(date) — CONNECTION OK" \
+                  || echo "$(date) — CONNECTION FAILED";
+                sleep 30;
+              done
+          env:
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: pg-dynamic-creds
+                  key: username
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: pg-dynamic-creds
+                  key: password
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
