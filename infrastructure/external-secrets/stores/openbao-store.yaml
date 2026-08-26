@@ -1,0 +1,15 @@
+apiVersion: external-secrets.io/v1
+kind: SecretStore
+metadata:
+  name: openbao-store
+  namespace: external-secrets
+spec:
+  provider:
+    vault:
+      server: "http://openbao.openbao.svc.cluster.local:8200"
+      path: "database"
+      version: "v2"
+      auth:
+        tokenSecretRef:
+          name: openbao-token
+          key: token
