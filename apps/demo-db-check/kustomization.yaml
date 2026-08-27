@@ -6,3 +6,4 @@ resources:
   - deployment.yaml
   - source-secret.yaml
   - push-secret.yaml
+  - hpa.yaml
