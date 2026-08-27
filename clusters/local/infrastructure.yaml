@@ -46,6 +46,8 @@ metadata:
   name: openbao
   namespace: flux-system
 spec:
+  dependsOn:
+    - name: cert-manager-issuers
   interval: 10m
   path: ./infrastructure/openbao
   prune: true

@@ -1,0 +1,29 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: openbao-tls
+  namespace: openbao
+spec:
+  secretName: openbao-tls
+  duration: 8760h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: devops-challenge-ca-issuer
+    kind: ClusterIssuer
+  dnsNames:
+    - openbao
+    - openbao.openbao
+    - openbao.openbao.svc
+    - openbao.openbao.svc.cluster.local
+    - openbao-active
+    - openbao-active.openbao.svc.cluster.local
+    - openbao-standby
+    - openbao-standby.openbao.svc.cluster.local
+    - openbao-internal
+    - openbao-internal.openbao.svc.cluster.local
+    - "*.openbao-internal.openbao.svc.cluster.local"
+    - localhost
+  ipAddresses:
+    - 127.0.0.1
