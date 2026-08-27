@@ -1,0 +1,15 @@
+apiVersion: external-secrets.io/v1beta1
+kind: ClusterSecretStore
+metadata:
+  name: openbao-push-store
+spec:
+  provider:
+    vault:
+      server: "http://openbao.openbao.svc.cluster.local:8200"
+      path: "kv-apps"
+      version: "v2"
+      auth:
+        tokenSecretRef:
+          name: openbao-push-token
+          namespace: external-secrets
+          key: token
