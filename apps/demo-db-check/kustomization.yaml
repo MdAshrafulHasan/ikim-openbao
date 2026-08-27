@@ -4,3 +4,5 @@ resources:
   - namespace.yaml
   - external-secret.yaml
   - deployment.yaml
+  - source-secret.yaml
+  - push-secret.yaml
