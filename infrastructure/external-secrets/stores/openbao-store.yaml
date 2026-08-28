@@ -5,8 +5,13 @@ metadata:
 spec:
   provider:
     vault:
-      server: "http://openbao.openbao.svc.cluster.local:8200"
+      server: "https://openbao.openbao.svc.cluster.local:8200"
       version: "v1"
+      caProvider:
+        type: Secret
+        name: openbao-ca
+        namespace: external-secrets
+        key: ca.crt
       auth:
         tokenSecretRef:
           name: openbao-token
