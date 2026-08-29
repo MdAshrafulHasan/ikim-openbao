@@ -14,6 +14,9 @@ initial bootstrap, nothing in this platform was ever applied by hand.
 **[docs/architecture-overview.md](./docs/architecture-overview.md)** — what's
 running, why, and links to the detail on every component.
 
+**[docs/installation.md](./docs/installation.md)** — how to stand this up
+yourself, from a clean machine to a fully running, verified platform.
+
 ## Stack
 
 - **Kubernetes**: kind (3 nodes), Flux (GitOps)
@@ -35,6 +38,7 @@ docs/adr/               Architecture decisions
 ## Documentation index
 
 - [Architecture overview](./docs/architecture-overview.md)
+- [Installation guide](./docs/installation.md)
 - [Flux / GitOps bootstrap](./docs/flux-gitops-bootstrap.md)
 - [Postgres: HA, backup, and tested restore](./docs/postgres-backup-restore.md)
 - [MinIO backup target](./docs/minio.md)
