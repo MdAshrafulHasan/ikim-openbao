@@ -57,12 +57,13 @@ else on the platform builds on that decision.
 
 I'd rather list these here than have them discovered:
 
-- **ESO's dynamic-secrets path has a client-side bug I isolated but didn't
-  fix.** Static secret sync (`PushSecret`, and reading fixed KV values)
-  works reliably. Reading OpenBao's *dynamic* database credentials through
-  ESO specifically produces credentials that don't match what Postgres
-  actually has, even though the same token and endpoint work correctly
-  when called directly. Full isolation writeup in
+- **ESO's `ExternalSecret` for dynamic credentials needed `dataFrom` +
+  `extract`, not separate `data[]` entries.** Reading `username` and
+  `password` as two independent `data[]` entries against the same dynamic
+  secrets path caused each field to come from a different underlying
+  credential-generation call, since that endpoint mints a new role on
+  every read. Fixed by pulling both fields from a single `dataFrom`
+  request instead. Full isolation-and-fix writeup in
   [external-secrets-operator.md](./external-secrets-operator.md).
 - **OpenBao reseals on every pod restart**, requiring manual
   re-unsealing with the Shamir key shares. Correct, expected behavior for

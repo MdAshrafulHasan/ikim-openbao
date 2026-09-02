@@ -211,6 +211,125 @@ anymore. That's the piece I was actually trying to prove — that secrets can
 flow from OpenBao into something a real workload can use, automatically,
 with rotation designed in from the start rather than added on afterward.
 
+## A limitation I found, and the fix I eventually landed on
+
+While building a second `ExternalSecret` (in the `demo-app` namespace,
+pulling the same `database/creds/readonly` role) I hit something worth
+documenting honestly rather than hiding: credentials synced by ESO through
+this dynamic secrets path consistently failed to authenticate against
+Postgres, even though everything about the setup was correct.
+
+**What I ruled out, in order, each with a direct test:**
+
+- **Stale/expired credential** — checked the role directly in Postgres
+  (`\du`), confirmed it existed with a valid, unexpired `VALID UNTIL`
+  timestamp. Not expiry.
+- **Encoding or hidden characters in the Secret** — decoded the password
+  byte-by-byte and checked every character's Unicode code point. All plain
+  ASCII, nothing hidden. Not an encoding bug.
+- **Shell/connection-string escaping** — tested with `PGPASSWORD` as an
+  environment variable instead of embedding it in a connection string, to
+  rule out any special-character parsing issue. Same failure. Not escaping.
+- **Stale pod environment variables** — restarted the pod to force it to
+  read the current Secret value fresh. Same failure. Not a stale-env-var
+  issue.
+- **Node/leader routing in the Raft cluster** — generated credentials
+  directly from each of the three OpenBao pods individually (bypassing the
+  load-balanced Service), using both the root token and the same
+  `eso-readonly` token ESO uses. **All of these succeeded.** Ruled out HA
+  routing entirely.
+- **The token/policy itself** — used the exact same `eso-readonly` token,
+  via raw `curl` against the exact same URL ESO calls
+  (`.../v1/database/creds/readonly`), from inside the cluster. **This also
+  succeeded.** The token and policy are correctly scoped and functional.
+
+That last test told me the token and endpoint were fine on their own — the
+problem had to be something about *how* ESO was assembling the Secret out
+of what it read.
+
+### Finding the actual root cause
+
+The `ExternalSecret` I'd written used two separate `data[]` entries, one
+for `username` and one for `password`, both pointing at the same
+`database/creds/readonly` path:
+
+```yaml
+data:
+  - secretKey: username
+    remoteRef:
+      key: database/creds/readonly
+      property: username
+  - secretKey: password
+    remoteRef:
+      key: database/creds/readonly
+      property: password
+```
+
+That path isn't a static value — every single read against it mints a
+**brand new** dynamic role in Postgres. If ESO evaluates each `data[]`
+entry as its own independent request rather than caching one response and
+extracting both fields from it, then `username` and `password` end up
+coming from two *different* calls — two individually valid credentials
+from two different roles, stitched together into one Secret as if they
+were a matching pair. That would explain everything I'd already seen: a
+well-formed username, a well-formed password, both legitimate on their
+own (which is why single-shot tests via `curl` and the CLI always
+succeeded), but never actually belonging to the same role.
+
+**The fix was to stop reading the two fields separately, and instead pull
+the whole response from one single call:**
+
+```yaml
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: pg-dynamic-creds
+  namespace: demo-app
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: openbao-store
+    kind: ClusterSecretStore
+  target:
+    name: pg-dynamic-creds
+    creationPolicy: Owner
+  dataFrom:
+    - extract:
+        key: database/creds/readonly
+```
+
+`dataFrom` with `extract` makes exactly one request to OpenBao and pulls
+every field — `username`, `password`, anything else in the response — out
+of that single, coherent read. There's no way for the two values to come
+from different roles anymore, because there's only ever one read.
+
+### Verified fix
+
+```
+$ kubectl get secret pg-dynamic-creds -n demo-app -o jsonpath="{.data.username}" | base64 -d
+v-token-readonly-KcuC9ppkuDeETXAlmqLy-1788342929
+
+$ psql "host=pg-cluster-rw.postgres.svc.cluster.local ... user=v-token-readonly-KcuC9ppkuDeETXAlmqLy-1788342929 password=..."
+ ?column?
+----------
+        1
+(1 row)
+```
+
+A clean connection, first try, using a credential pulled straight from the
+synced Secret — no manual intervention, no retry. I applied the same fix
+to the `pg-dynamic-creds` `ExternalSecret` in the `external-secrets`
+namespace as well, since it had the identical two-entries pattern and
+almost certainly the identical bug.
+
+I'm glad I didn't stop at "known limitation, documented and moved on."
+Going back to actually find the root cause turned a real, well-isolated
+bug report into a real, working fix — and the isolation work I'd already
+done (ruling out expiry, encoding, escaping, staleness, HA routing, and
+the token/policy itself) is exactly what pointed me toward the one thing
+left that could explain it: the shape of the request itself, not anything
+about OpenBao, the network, or the credentials.
+
 ## What I'd do next
 
 - Deploy an actual application that mounts `pg-dynamic-creds` and connects
