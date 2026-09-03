@@ -126,17 +126,21 @@ static KV read, which is what that provider is far more commonly used and
 tested for.
 
 I wrote this whole isolation process up in detail in
-[external-secrets-operator.md](./external-secrets-operator.md), including
-what I'd try next if I kept pushing on it (pinning an exact ESO patch
-version, testing against real HashiCorp Vault instead of OpenBao to see if
-it's provider-specific). I stopped chasing it further here — not because I
-ran out of ideas, but because I'd already produced a precise, defensible
-finding, and time was better spent proving the rest of the platform than
-debugging one upstream client library further.
+[external-secrets-operator.md](./external-secrets-operator.md) — and going
+back to it later, the isolation work here (ruling out expiry, encoding,
+escaping, staleness, and HA routing) turned out to be exactly what pointed
+me at the actual root cause: `ExternalSecret` was reading `username` and
+`password` as two separate requests against a path that mints a brand-new
+credential on every read, so the two fields came from two different roles.
+Switching to a single `dataFrom`/`extract` read fixed it — full root-cause
+writeup and the fix itself are in
+[external-secrets-operator.md](./external-secrets-operator.md#a-limitation-i-found-and-the-fix-i-eventually-landed-on).
+This is no longer an open gap; `db-check` runs against the fixed
+`ExternalSecret`.
 
-**For the actual demonstration of bidirectional sync**, I didn't want that
-one narrow gap to undermine the whole story, so I built a second, parallel
-path that sidesteps it entirely.
+**While I was still isolating the root cause**, and didn't yet know whether
+it'd be fixable quickly, I also built a second, parallel path so the
+bidirectional-sync demonstration wouldn't depend on resolving it first.
 
 ## Proving the other direction: Kubernetes → OpenBao
 
@@ -231,9 +235,9 @@ managed-by     demo-db-check-pod
 
 A native Kubernetes Secret I created, genuinely mirrored into OpenBao. That
 closes the loop the brief asks for — pull (OpenBao → Kubernetes, via the
-dynamic Postgres credential, working with one documented limitation) and
-push (Kubernetes → OpenBao, via this static config secret, working
-cleanly).
+dynamic Postgres credential — the ESO bug hit along the way is fixed, see
+[external-secrets-operator.md](./external-secrets-operator.md)) and push
+(Kubernetes → OpenBao, via this static config secret, working cleanly).
 
 ## Adding autoscaling
 
@@ -294,9 +298,9 @@ as a correctly-shaped but untested object.
 
 ## What this section proves altogether
 
-- OpenBao → Kubernetes secret sync, consumed by a real workload, with an
-  honestly documented and thoroughly isolated limitation on the dynamic
-  side.
+- OpenBao → Kubernetes secret sync, consumed by a real workload — including
+  a genuine bug on the dynamic-credential path, isolated methodically and
+  fixed, not just documented as a known limitation.
 - Kubernetes → OpenBao secret sync, verified by checking OpenBao directly,
   not just trusting a status message.
 - Horizontal scaling wired to a real deployment, with resource requests in
